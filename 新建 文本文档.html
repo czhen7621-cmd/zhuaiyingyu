@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>英格力士 - 单词测验</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 500px;
+      margin: 60px auto;
+      padding: 0 20px;
+      background: #f9f9f9;
+    }
+    h1 { font-size: 24px; color: #E85D24; }
+    .score {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 24px;
+    }
+    .question {
+      font-size: 28px;
+      font-weight: bold;
+      text-align: center;
+      margin: 32px 0;
+      color: #333;
+    }
+    .options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .option {
+      padding: 16px;
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .option:hover { border-color: #E85D24; }
+    .option.correct { background: #d4edda; border-color: #28a745; color: #155724; }
+    .option.wrong { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+    .result {
+      text-align: center;
+      font-size: 20px;
+      margin-top: 24px;
+      min-height: 32px;
+    }
+    .next-btn {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      background: #E85D24;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>英格力士</h1>
+  <div class="score" id="score">得分：0 / 0</div>
+  <div class="question" id="question"></div>
+  <div class="options" id="options"></div>
+  <div class="result" id="result"></div>
+  <button class="next-btn" id="next-btn" onclick="nextQuestion()">下一题 →</button>
+
+  <script>
+    const words = [
+      { cn: "苹果", en: "apple" },
+      { cn: "快乐的", en: "happy" },
+      { cn: "奔跑", en: "run" },
+      { cn: "漂亮的", en: "beautiful" },
+      { cn: "学习", en: "study" },
+      { cn: "朋友", en: "friend" },
+      { cn: "太阳", en: "sun" },
+      { cn: "音乐", en: "music" },
+    ];
+
+    let current = 0;
+    let correct = 0;
+    let total = 0;
+
+    function shuffle(arr) {
+      return arr.sort(() => Math.random() - 0.5);
+    }
+
+    function nextQuestion() {
+      if (current >= words.length) {
+        document.getElementById("question").textContent = "🎉 测验完成！";
+        document.getElementById("options").innerHTML = "";
+        document.getElementById("result").textContent = `最终得分：${correct} / ${total}`;
+        document.getElementById("next-btn").style.display = "none";
+        return;
+      }
+
+      const word = words[current];
+      document.getElementById("question").textContent = word.cn;
+      document.getElementById("result").textContent = "";
+      document.getElementById("next-btn").style.display = "none";
+
+      // 生成4个选项：1个正确 + 3个错误
+      const wrong = shuffle(words.filter(w => w.en !== word.en)).slice(0, 3);
+      const options = shuffle([word, ...wrong]);
+
+      const container = document.getElementById("options");
+      container.innerHTML = "";
+      options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "option";
+        btn.textContent = opt.en;
+        btn.onclick = () => checkAnswer(opt.en, word.en);
+        container.appendChild(btn);
+      });
+    }
+
+    function checkAnswer(selected, correct_answer) {
+      total++;
+      const btns = document.querySelectorAll(".option");
+      btns.forEach(btn => {
+        btn.onclick = null;
+        if (btn.textContent === correct_answer) btn.classList.add("correct");
+        if (btn.textContent === selected && selected !== correct_answer) btn.classList.add("wrong");
+      });
+
+      if (selected === correct_answer) {
+        correct++;
+        document.getElementById("result").textContent = "✅ 正确！";
+      } else {
+        document.getElementById("result").textContent = `❌ 正确答案是：${correct_answer}`;
+      }
+
+      document.getElementById("score").textContent = `得分：${correct} / ${total}`;
+      document.getElementById("next-btn").style.display = "block";
+      current++;
+    }
+
+    nextQuestion();
+  </script>
+
+</body>
+</html>

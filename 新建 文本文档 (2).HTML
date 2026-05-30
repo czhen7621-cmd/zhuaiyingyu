@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>英格力士</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 500px;
+      margin: 60px auto;
+      padding: 0 20px;
+      background: #f9f9f9;
+    }
+    h1 { font-size: 24px; color: #E85D24; }
+    .level-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .level-chip {
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      border: 2px solid #ddd;
+      color: #aaa;
+    }
+    .level-chip.active {
+      border-color: #E85D24;
+      color: #E85D24;
+      font-weight: bold;
+    }
+    .level-chip.done {
+      background: #28a745;
+      border-color: #28a745;
+      color: white;
+    }
+    .level-chip.locked { opacity: 0.4; }
+    .score { font-size: 14px; color: #888; margin-bottom: 24px; }
+    .question {
+      font-size: 32px;
+      font-weight: bold;
+      text-align: center;
+      margin: 32px 0;
+      color: #333;
+    }
+    .options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .option {
+      padding: 16px;
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .option:hover { border-color: #E85D24; }
+    .option.correct { background: #d4edda; border-color: #28a745; color: #155724; }
+    .option.wrong { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+    .result { text-align: center; font-size: 18px; margin-top: 20px; min-height: 28px; }
+    .next-btn {
+      display: none;
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px;
+      background: #E85D24;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .summary {
+      text-align: center;
+      padding: 32px 0;
+    }
+    .summary h2 { font-size: 28px; margin-bottom: 8px; }
+    .summary p { color: #666; margin-bottom: 24px; font-size: 16px; }
+    .summary button {
+      padding: 14px 32px;
+      background: #E85D24;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>英格力士</h1>
+  <div class="level-bar" id="level-bar"></div>
+  <div class="score" id="score"></div>
+  <div id="game-area"></div>
+
+  <script>
+    const levels = [
+      {
+        name: "第一关", pass: 4,
+        words: [
+          { cn: "苹果", en: "apple" },
+          { cn: "快乐的", en: "happy" },
+          { cn: "奔跑", en: "run" },
+          { cn: "太阳", en: "sun" },
+          { cn: "朋友", en: "friend" },
+        ]
+      },
+      {
+        name: "第二关", pass: 4,
+        words: [
+          { cn: "漂亮的", en: "beautiful" },
+          { cn: "学习", en: "study" },
+          { cn: "音乐", en: "music" },
+          { cn: "梦想", en: "dream" },
+          { cn: "勇敢的", en: "brave" },
+        ]
+      },
+      {
+        name: "第三关", pass: 4,
+        words: [
+          { cn: "坚持", en: "persist" },
+          { cn: "创造", en: "create" },
+          { cn: "挑战", en: "challenge" },
+          { cn: "成功", en: "succeed" },
+          { cn: "独立", en: "independent" },
+        ]
+      }
+    ];
+
+    let currentLevel = 0;
+    let currentQ = 0;
+    let correct = 0;
+    let unlockedLevel = 0;
+
+    function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+    function renderLevelBar() {
+      const bar = document.getElementById("level-bar");
+      bar.innerHTML = "";
+      levels.forEach((lv, i) => {
+        const chip = document.createElement("div");
+        chip.className = "level-chip";
+        if (i < currentLevel) chip.classList.add("done");
+        else if (i === currentLevel) chip.classList.add("active");
+        else chip.classList.add("locked");
+        chip.textContent = i < currentLevel ? "✓ " + lv.name : lv.name;
+        bar.appendChild(chip);
+      });
+    }
+
+    function renderQuestion() {
+      const lv = levels[currentLevel];
+      const word = lv.words[currentQ];
+      document.getElementById("score").textContent =
+        `第 ${currentQ + 1} / ${lv.words.length} 题　本关已答对：${correct} 题　过关需：${lv.pass} 题`;
+
+      const wrong = shuffle(levels.flatMap(l => l.words).filter(w => w.en !== word.en)).slice(0, 3);
+      const options = shuffle([word, ...wrong]);
+
+      document.getElementById("game-area").innerHTML = `
+        <div class="question">${word.cn}</div>
+        <div class="options" id="options"></div>
+        <div class="result" id="result"></div>
+        <button class="next-btn" id="next-btn">下一题 →</button>
+      `;
+
+      const container = document.getElementById("options");
+      options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "option";
+        btn.textContent = opt.en;
+        btn.onclick = () => checkAnswer(opt.en, word.en);
+        container.appendChild(btn);
+      });
+
+      document.getElementById("next-btn").onclick = () => {
+        currentQ++;
+        if (currentQ >= lv.words.length) {
+          showSummary();
+        } else {
+          renderQuestion();
+        }
+      };
+    }
+
+    function checkAnswer(selected, answer) {
+      if (selected === answer) correct++;
+      document.querySelectorAll(".option").forEach(btn => {
+        btn.onclick = null;
+        if (btn.textContent === answer) btn.classList.add("correct");
+        if (btn.textContent === selected && selected !== answer) btn.classList.add("wrong");
+      });
+      document.getElementById("result").textContent =
+        selected === answer ? "✅ 正确！" : `❌ 正确答案是：${answer}`;
+      document.getElementById("next-btn").style.display = "block";
+    }
+
+    function showSummary() {
+      const lv = levels[currentLevel];
+      const passed = correct >= lv.pass;
+      const isLast = currentLevel === levels.length - 1;
+
+      document.getElementById("score").textContent = "";
+      document.getElementById("game-area").innerHTML = `
+        <div class="summary">
+          <h2>${passed ? (isLast ? "🏆 全部通关！" : "🎉 过关！") : "😅 未过关"}</h2>
+          <p>答对 ${correct} / ${lv.words.length} 题　${passed ? "恭喜通过！" : `需答对 ${lv.pass} 题才能过关`}</p>
+          <button onclick="${passed && !isLast ? 'nextLevel()' : 'retryLevel()'}">${passed && !isLast ? "进入下一关 →" : isLast && passed ? "再玩一次" : "重新挑战"}</button>
+        </div>
+      `;
+    }
+
+    function nextLevel() {
+      currentLevel++;
+      currentQ = 0;
+      correct = 0;
+      renderLevelBar();
+      renderQuestion();
+    }
+
+    function retryLevel() {
+      currentQ = 0;
+      correct = 0;
+      renderLevelBar();
+      renderQuestion();
+    }
+
+    renderLevelBar();
+    renderQuestion();
+  </script>
+</body>
+</html>
